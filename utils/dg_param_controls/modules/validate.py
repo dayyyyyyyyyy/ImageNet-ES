@@ -32,6 +32,7 @@ def validate(val_loader, model, criterion, args, dataset_name, log_file, desc='I
                 is_timm = True if hasattr(args, 'timm') and args.timm else False
                 arch = None if not hasattr(args, 'arch') else args.arch
 
+                # Save features
                 if is_timm and arch == 'res50': # Fine-tuned resnet 50 model weights
                     output = model(images)
                 else:
@@ -43,25 +44,33 @@ def validate(val_loader, model, criterion, args, dataset_name, log_file, desc='I
                             return_nodes = {'layer4': 'layer4'}
                             feature_extractor = create_feature_extractor(model, return_nodes=return_nodes)
                             feats = feature_extractor(images)['layer4']
-
                         feats = nn.AdaptiveAvgPool2d((1, 1))(feats)
                         feats = torch.flatten(feats, 1).cpu().numpy()
-
                         for f, p in zip(feats, paths):
                             np.save( os.path.join('features',desc,f'{p.split("/")[-2]}_{os.path.basename(p)}.npy'), f)
+                    output = model(images)[:,index_filter]         
                     
-                    output = model(images)[:,index_filter]                
-                
                 loss = criterion(output, target)
-                
+                confidence = torch.nn.functional.softmax(output, dim=1)
                 correct = accuracy(output, target, topk=(1,))
                 correct = correct.reshape(-1)
 
+                # Save log details in a dictionary
                 if detail_log is not None:
-                    for c, p in zip(correct, paths):
-                        detail_log.write(f'{p.split("/")[-2]},{os.path.basename(p)},{c*1}\n')
+                    for c, conf, p in zip(correct, confidence, paths):
+                        dataset_name, arch, l, param = desc.split('__')
+                        conf, _ = torch.sort(conf, descending=True)
+                        label = p.split('/')[-2]
+                        filename = os.path.basename(p)
+                        correct = c * 1
+                        if l not in detail_log.keys():
+                            detail_log[l] = dict()
+                        if param not in detail_log[l].keys():
+                            detail_log[l][param] = dict()
+                        if label not in detail_log[l][param].keys():
+                            detail_log[l][param][label] = dict()
+                        detail_log[l][param][label][filename] = {'correct': correct, 'confidence': conf}
                 
-
                 correct_k = correct.reshape(-1).float().sum(0, keepdim=True)
                 acc1 = correct_k.mul_(100.0 / images.size(0))
 
@@ -90,20 +99,28 @@ def validate(val_loader, model, criterion, args, dataset_name, log_file, desc='I
     model.eval()
     detail_log = None
     save_features = False
+    log_dirpath = os.path.join('val_results', args.arch)
+    log_filepath = None
 
     if hasattr(args, 'save_features') and args.save_features:
-        if dataset_name in ['imagenet-es', 'imagenet-es-auto']:
+        if dataset_name in ['imagenet-es', 'imagenet-es-auto', 'imagenet-es-natural', 'imagenet-es-natural-auto']:
             os.makedirs(os.path.join('features', desc), exist_ok=True)
             save_features = True
         else:
             print("WARNING: Only saving features for ImageNet-ES is supported!")
     
     if hasattr(args, 'save_details') and args.save_details:
-        detail_log = open(os.path.join('logs', 'details', f'eval_details_{desc}'), 'w+')
+        os.makedirs(log_dirpath, exist_ok=True)
+        log_filepath = os.path.join(log_dirpath, f'eval_{dataset_name}.pt')
+        if os.path.isfile(log_filepath):
+            detail_log = torch.load(log_filepath)
+        else:
+            detail_log = dict()
 
     run_validate(val_loader, detail_log, dataset_name, save_features)
     if detail_log is not None:
-        detail_log.close()
+        torch.save(detail_log, log_filepath)
+        # detail_log.close()
 
     if args.distributed:
         top1.all_reduce()

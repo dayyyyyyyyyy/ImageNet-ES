@@ -26,5 +26,7 @@ indices_dict = {
     'imagenet-tin':indices_in_1k_tin,
     'imagenet-c-tin':indices_in_1k_tin,
     'imagenet':indices_in_1k_all,
-    'imagenet-c':indices_in_1k_all
+    'imagenet-c':indices_in_1k_all,
+    'imagenet-es-natural':indices_in_1k_tin,
+    'imagenet-es-natural-auto':indices_in_1k_tin,
 }

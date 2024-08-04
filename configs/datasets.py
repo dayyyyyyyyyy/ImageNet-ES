@@ -1,25 +1,27 @@
-from .user_configs import IMAGENET_ES_ROOT_DIR
+from .user_configs import DATASET_ROOT_DIR
 
 import os
 import torch
 import torchvision.models as models
 
-DATA_ROOT_DIR = IMAGENET_ES_ROOT_DIR
+DATA_ROOT_DIR = DATASET_ROOT_DIR
 
 SAMPLE_DIR_MAP = {
     'es-train': 'tin_no_resize_sample_removed', #S3
     'es-val': 'sampled_tin_no_resize', #S1
     'es-test': 'sampled_tin_no_resize2', #S2
+    'es-natural-test': 'sampled_tin_no_resize2', #S2
 }
 
 OPS_NUM = {
     'es-val': 64,
-    'es-test': 27,
+    'es-natural-test': 27,
 }
 
 ENVS = {
     'es-val': ['l1', 'l5'],
     'es-test': ['l1', 'l5'],
+    'es-natural-test': ['l1', 'l2', 'l3', 'l4', 'l6', 'l7', 'l8', 'l9', 'l10'],
 }
 
 DATASET_SUBPATH = {
@@ -30,7 +32,9 @@ DATASET_SUBPATH = {
     'imagenet-a': os.path.join('ImageNet-A'),
     'imagenet-tin': os.path.join('ILSVRC12'),
     'imagenet-es': os.path.join('ImageNet-ES', 'es-test', 'param_control'),
-    'imagenet-es-auto': os.path.join('ImageNet-ES', 'es-test', 'auto_exposure')
+    'imagenet-es-auto': os.path.join('ImageNet-ES', 'es-test', 'auto_exposure'),
+    'imagenet-es-natural': os.path.join('ImageNet-ES-Natural', 'es-natural-test', 'param_control'),
+    'imagenet-es-natural-auto': os.path.join('ImageNet-ES-Natural', 'es-natural-test', 'auto_exposure')
 }
 
 TIMM_MODELS = {

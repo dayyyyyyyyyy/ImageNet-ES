@@ -266,7 +266,7 @@ def main_worker(gpu, ngpus_per_node, args):
         
     if args.dataset in ['imagenet-c','imagenet-c-tin']:            
         parse_acc_imagenet_c(acc_by_param, LOG_FOUT, RESULT_FOUT, True)
-    elif args.dataset in  ['imagenet-es','imagenet-es-auto']:            
+    elif args.dataset in ['imagenet-es','imagenet-es-auto', 'imagenet-es-natural', 'imagenet-es-natural-auto']:            
         parse_acc_imagenet_es(acc_by_param, LOG_FOUT, RESULT_FOUT, True)
     else:
         log_string(RESULT_FOUT, 'Acc.')

@@ -141,6 +141,20 @@ def get_dataset(dataset_name, data_root, arch):
                 data_dir = os.path.join(dataset_path(dataset_name, data_root), l, param)
                 dataset = _get_dataset(data_dir, cls_filter, fname_filter, val_transform)
                 dataset_dict[f'{dataset_name}__{arch}__{l}__{param}'] = dataset
+                
+    elif dataset_name in ['imagenet-es-natural', 'imagenet-es-natural-auto']:
+        param_sets = []
+        light = ENVS['es-natural-test']
+        num_params = OPS_NUM['es-natural-test'] if dataset_name == 'imagenet-es-natural' else NUM_PARAMS_AUTO
+        
+        for i in range(1, 1 + num_params):
+            param_sets.append(f'param_{i}')
+
+        for l in light:        
+            for param in param_sets:
+                data_dir = os.path.join(dataset_path(dataset_name, data_root), l, param)
+                dataset = _get_dataset(data_dir, cls_filter, fname_filter, val_transform)
+                dataset_dict[f'{dataset_name}__{arch}__{l}__{param}'] = dataset
     
     return dataset_dict
 

@@ -102,7 +102,7 @@ parser.add_argument('--data_root', default='~/datasets', type=str,
 args = parser.parse_args()
 
 
-best_acc1, best_acc1_c, best_acc1_es = 0, 0, 0
+best_acc1, best_acc1_c, best_acc1_es, best_acc1_es2 = 0, 0, 0, 0
 os.makedirs('aug_logs', exist_ok=True)
 os.makedirs('results_dg_param_control', exist_ok=True)
 log_file = f'aug_logs/aug_experiments_{args.exp_settings}_{int(args.use_es_training)}.txt'
@@ -110,7 +110,7 @@ LOG_FOUT = open(log_file, 'a+')
 result_file = f'results_dg_param_control/aug_experiments.txt'
 if not os.path.exists(result_file):
     RESULT_FOUT = open(result_file, 'a+')
-    RESULT_FOUT.write('Id,Augmentations,Use-ES-data,ImageNet val., ImageNet-C val., ImageNet-ES val.\n')
+    RESULT_FOUT.write('Id,Augmentations, Use-ES-data, ImageNet val., ImageNet-C val., ImageNet-ES val., ImageNet-ES-Natural val.\n')
 else: 
     RESULT_FOUT = open(result_file, 'a+')
 
@@ -156,7 +156,7 @@ def main():
 
 
 def main_worker(gpu, ngpus_per_node, args):
-    global best_acc1, best_acc1_c, best_acc1_es
+    global best_acc1, best_acc1_c, best_acc1_es, best_acc1_esn
     args.gpu = gpu
 
     if args.gpu is not None:
@@ -258,10 +258,12 @@ def main_worker(gpu, ngpus_per_node, args):
     im_dict = get_dataset('imagenet-tin', args.data_root, args.arch)
     im_c_dict = get_dataset('imagenet-c-tin', args.data_root, args.arch)
     im_es_dict = get_dataset('imagenet-es', args.data_root, args.arch)
+    im_esn_dict = get_dataset('imagenet-es-natural', args.data_root, args.arch)
 
     val_dataset_im = torch.utils.data.ConcatDataset(im_dict.values())
     val_dataset_im_c = torch.utils.data.ConcatDataset(im_c_dict.values())
     val_dataset_im_es = torch.utils.data.ConcatDataset(im_es_dict.values())
+    val_dataset_im_esn = torch.utils.data.ConcatDataset(im_esn_dict.values())
 
     val_loader_im = torch.utils.data.DataLoader(val_dataset_im,
         batch_size=args.batch_size, shuffle=False, num_workers=args.workers, pin_memory=True)
@@ -270,6 +272,9 @@ def main_worker(gpu, ngpus_per_node, args):
         batch_size=args.batch_size, shuffle=False, num_workers=args.workers, pin_memory=True)
 
     val_loader_im_es = torch.utils.data.DataLoader(val_dataset_im_es,
+        batch_size=args.batch_size, shuffle=False, num_workers=args.workers, pin_memory=True)
+    
+    val_loader_im_esn = torch.utils.data.DataLoader(val_dataset_im_esn,
         batch_size=args.batch_size, shuffle=False, num_workers=args.workers, pin_memory=True)
 
 
@@ -301,7 +306,7 @@ def main_worker(gpu, ngpus_per_node, args):
             train_sampler.set_epoch(epoch)
 
         # train for one epoch
-        # train(train_loader, model, criterion, optimizer, scheduler, epoch, args, LOG_FOUT)
+        train(train_loader, model, criterion, optimizer, scheduler, epoch, args, LOG_FOUT)
 
         # evaluate on validation set
         log_string(LOG_FOUT, '-'*10 + 'Imagenet validation' + '-'*10)
@@ -313,12 +318,16 @@ def main_worker(gpu, ngpus_per_node, args):
         log_string(LOG_FOUT, '-'*10 + 'Imagenet-ES validation' + '-'*10)
         acc1_es = validate(val_loader_im_es, model, criterion, args, 'imagenet-es', LOG_FOUT)
         
+        log_string(LOG_FOUT, '-'*10 + 'Imagenet-ES-Natural validation' + '-'*10)
+        acc1_esn = validate(val_loader_im_esn, model, criterion, args, 'imagenet-es-natural', LOG_FOUT)
+        
 
         # remember best acc@1 and save checkpoint
-        is_best = acc1 > best_acc1
+        is_best = acc1_esn > best_acc1_esn
         best_acc1 = max(acc1, best_acc1)
         best_acc1_c, best_acc1_es = acc1_c, acc1_es
-        log_string(LOG_FOUT, f'*** Best accuracy (Im, Im-C, Im-ES): {best_acc1}, {best_acc1_c}, {best_acc1_es}')
+        best_acc1_esn = acc1_esn
+        log_string(LOG_FOUT, f'*** Best accuracy (Im, Im-C, Im-ES, Im-ES-N): {best_acc1}, {best_acc1_c}, {best_acc1_es}, {best_acc1_esn}')
 
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
                 and args.rank % ngpus_per_node == 0):
@@ -332,7 +341,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
     exp_desc_map = {0:'Comp Aug.', 1:'Basic Digital Aug.', 2:'Advanced Digital Aug.'}
     log_string(RESULT_FOUT, f'{1 + args.use_es_training*3 + args.exp_settings}, {exp_desc_map[args.exp_settings]},' +
-                        f'{args.use_es_training},{best_acc1}, {best_acc1_c}, {best_acc1_es}')
+                        f'{args.use_es_training}, {best_acc1}, {best_acc1_c}, {best_acc1_es}, {best_acc1_es2}')
     
     LOG_FOUT.close()
     RESULT_FOUT.close()
