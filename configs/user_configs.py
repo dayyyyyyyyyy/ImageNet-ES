@@ -7,7 +7,7 @@
 #       - param-control
 #       - auto-exposure
 #   - ImageNet-ES-Natural
-#     - es-test
+#     - es-natural-test
 #       - param-control
 #       - auto-exposure
 

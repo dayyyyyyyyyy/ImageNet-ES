@@ -15,6 +15,7 @@ SAMPLE_DIR_MAP = {
 
 OPS_NUM = {
     'es-val': 64,
+    'es-test': 27,
     'es-natural-test': 27,
 }
 
