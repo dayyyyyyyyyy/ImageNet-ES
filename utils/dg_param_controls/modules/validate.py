@@ -69,7 +69,7 @@ def validate(val_loader, model, criterion, args, dataset_name, log_file, desc='I
                             detail_log[l][param] = dict()
                         if label not in detail_log[l][param].keys():
                             detail_log[l][param][label] = dict()
-                        detail_log[l][param][label][filename] = {'correct': correct, 'confidence': conf}
+                        detail_log[l][param][label][filename] = {'correct': correct, 'confidence': conf[:10]}  # save only top 10 confidences (for saving space)
                 
                 correct_k = correct.reshape(-1).float().sum(0, keepdim=True)
                 acc1 = correct_k.mul_(100.0 / images.size(0))
