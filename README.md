@@ -38,6 +38,19 @@ bash eval_scripts.sh
 
 Results will be gathered in `val_results` directory
 
+If validation is not available on your working environment, you can download log file for ResNet 50 [here](https://drive.google.com/file/d/1AKToR61rKwNqaxnYXc5YDtvsbmGblJ5u/view?usp=sharing).
+
+You can place it in the following structure:
+
+```
+val_results
+  - res50
+    - eval_imagenet-es.pt
+    - eval_imagenet-es-auto.pt
+    - eval_imagenet-es-natural.pt
+    - eval_imagenet-es-natural-auto.pt
+```
+
 ### 3. Run Lens Evaluation
 
 Use the following script to evaluate:
@@ -46,6 +59,3 @@ Use the following script to evaluate:
 python3 lens_eval.py -a <model_name> -d <dataset_name>
 python3 lens_eval.py -a <model_name> -d <dataset_name> --ae # for auto exposure
 ```
-
-### 4. Visualization
-

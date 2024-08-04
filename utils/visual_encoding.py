@@ -11,6 +11,7 @@ LABEL_DICT = {
     'worst': 'Worst',
     'best': 'Best',
     'auto': 'Auto',
+    'mal': 'Bad',
 }
 
 COLOR = {
@@ -30,6 +31,7 @@ COLOR = {
     'worst': 'magenta',
     'best': 'orange',
     'auto': 'blue',
+    'mal': 'red',
 }
 
 HIST_COLOR = {

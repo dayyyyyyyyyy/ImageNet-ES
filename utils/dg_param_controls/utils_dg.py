@@ -158,7 +158,7 @@ def collect_features(args):
         if os.path.isdir(os.path.join('features',d)):
             dataset_name, model, light, param_no = d.split('__')
             if dataset_name != args.dataset: continue
-            key1 = 'param-control' if dataset_name == 'imagenet_es' else 'auto-exposure'
+            key1 = 'param-control' if dataset_name in ['imagenet_es', 'imagenet-es-natural'] else 'auto-exposure'
             key2 = light
             key3 = param_no
             

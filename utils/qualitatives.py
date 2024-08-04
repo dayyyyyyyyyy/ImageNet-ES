@@ -13,6 +13,9 @@ from configs.datasets import DATA_ROOT_DIR, SAMPLE_DIR_MAP, OPS_NUM
 from utils.visual_encoding import LABEL_DICT, COLOR
 
 TRANSFORMATIONS = LOADER_CONFIG['DATA_TRANSFORMS']
+ENVIRONMENTS = ['l1', 'l3'] #, 'l3', 'l4', 'l6', 'l7', 'l8', 'l9', 'l10']
+N = 3
+LIMIT = 10
 
 class Interest():
     def __init__(self, accs_pc_df, accs_ae_df):
@@ -22,29 +25,28 @@ class Interest():
     def get_interest_settings(self, TARGET_ENV):
         TARGETS = self.accs_pc_df[self.accs_pc_df['Light']==TARGET_ENV]
         interest_settings = {
-            'BEST5_SETTING': list(TARGETS.nlargest(5,'Acc.')['Camera Parameter'])[:5],
-            'WORST5_SETTING': list(TARGETS.nsmallest(5,'Acc.')['Camera Parameter'])[:5],
+            f'BEST{N}_SETTING': list(TARGETS.nlargest(N,'Acc.')['Camera Parameter'])[:N],
+            f'WORST{N}_SETTING': list(TARGETS.nsmallest(N,'Acc.')['Camera Parameter'])[:N],
+            f'MAL{N}_SETTING': list(TARGETS.nlargest(10,'Acc.')['Camera Parameter'])[LIMIT-N:LIMIT],
             'AUTO5_SETTING': list(map(lambda i: f'param_{i}', range(1,5+1))),
         }
         print(interest_settings)
         return interest_settings 
 
 class QualCanvas(Interest):
-    def __init__(self, accs_pc_df, accs_ae_df, dataset_dir=DATA_ROOT_DIR, target_dir='es-test', sample_dir_map=SAMPLE_DIR_MAP):
+    def __init__(self, accs_pc_df, accs_ae_df, dataset_dir=DATA_ROOT_DIR, target_dir='es2-test', sample_dir_map=SAMPLE_DIR_MAP):
         super().__init__(accs_pc_df, accs_ae_df)
         
         self.dataset_dir = dataset_dir
         self.target_dir = target_dir
         self.sample_dir_map = sample_dir_map
 
-        l1_interests = self.get_interest_settings('l1')
-        l5_interests = self.get_interest_settings('l5')
+        interests = {e: self.get_interest_settings(e) for e in ENVIRONMENTS}
         
-        # indices
-        self.top5_l1 = [int(setting_name.split('_')[-1]) for setting_name in l1_interests['BEST5_SETTING']]
-        self.top5_l5 = [int(setting_name.split('_')[-1]) for setting_name in l5_interests['BEST5_SETTING']]
-        self.bot5_l1 = [int(setting_name.split('_')[-1]) for setting_name in l1_interests['WORST5_SETTING']]
-        self.bot5_l5 = [int(setting_name.split('_')[-1]) for setting_name in l5_interests['WORST5_SETTING']]
+        self.top5s, self.bot5s = dict(), dict()
+        for e, interest in interests.items():
+            self.top5s[e] = [int(setting_name.split('_')[-1]) for setting_name in interest[f'BEST{N}_SETTING']]
+            self.bot5s[e] = [int(setting_name.split('_')[-1]) for setting_name in interest[f'WORST{N}_SETTING']]
         
         def to_avg_acc(target_settings, env, target_df=self.accs_pc_df):
             targets = target_df[target_df['Light']==env]
@@ -52,14 +54,13 @@ class QualCanvas(Interest):
         
         self.avg_acc = {
             'sampled': 86.3,
-            'top5_l1': to_avg_acc(l1_interests['BEST5_SETTING'], 'l1'),
-            'bot5_l1': to_avg_acc(l1_interests['WORST5_SETTING'], 'l1'),
-            'ae5_l1': to_avg_acc(l1_interests['AUTO5_SETTING'], 'l1', target_df=self.accs_ae_df),
-            'top5_l5': to_avg_acc(l5_interests['BEST5_SETTING'], 'l5'),
-            'bot5_l5': to_avg_acc(l5_interests['WORST5_SETTING'], 'l5'),
-            'ae5_l5': to_avg_acc(l5_interests['AUTO5_SETTING'], 'l5', target_df=self.accs_ae_df),
         }
-    
+        for e, interest in interests.items():
+            self.avg_acc[f'top{N}_{e}'] = to_avg_acc(interest[f'BEST{N}_SETTING'], e)
+            self.avg_acc[f'bot{N}_{e}'] = to_avg_acc(interest[f'WORST{N}_SETTING'], e)
+            self.avg_acc[f'ae5_{e}'] = to_avg_acc(interest['AUTO5_SETTING'], e, target_df=self.accs_ae_df)
+  
+            
     def set_target_dir(self, target_dir_name):
         self.target_dir = target_dir_name
     
@@ -77,22 +78,20 @@ class QualCanvas(Interest):
     def load_imgs(self, path, obj, splits=None):
         
         ROOT_DIR = f'{self.dataset_dir}/{self.target_dir}'
-        obj_path = {
-            'ae_l1': 'auto_exposure/l1',
-            'ae_l5': 'auto_exposure/l5',
-            'pc_l1': 'param_control/l1',
-            'pc_l5': 'param_control/l5',
-        }
+        obj_path = dict()
+
+        for e in ENVIRONMENTS:
+            obj_path[f'ae_{e}'] = f'auto_exposure/{e}'
+            obj_path[f'pc_{e}'] = f'param_control/{e}'
         
         ops_num = OPS_NUM[self.target_dir]
         
         ae_num = splits if splits else 3
-        obj_param_num = {
-            'ae_l1': [f'param_{i+1}' for i in range(ae_num)],
-            'ae_l5': [f'param_{i+1}' for i in range(ae_num)],
-            'pc_l1': [f'param_{i}' for i in range(1,ops_num+1)],
-            'pc_l5': [f'param_{i}' for i in range(1,ops_num+1)],
-        }
+        obj_param_num = dict()
+
+        for e in ENVIRONMENTS:
+            obj_param_num[f'ae_{e}'] = [f'param_{i+1}' for i in range(ae_num)]
+            obj_param_num[f'pc_{e}'] = [f'param_{i}' for i in range(1,ops_num+1)]
 
         FINAL_ROOT_PATH = f'{ROOT_DIR}/{obj_path[obj]}'
         
@@ -140,15 +139,13 @@ class QualCanvas(Interest):
         rows = []
         for path, picked in zip(path_list, picked_list):
             rows.append(self.get_quals(path, picked))
-        titles = [
-            f'sampled\n{self.avg_acc["sampled"]:.2f}%',
-            f'light on top 5\n{self.avg_acc["top5_l1"]:.2f}%',
-            f'light on bottom 5\n{self.avg_acc["bot5_l1"]:.2f}%',
-            f'light on AE 5\n{self.avg_acc["ae5_l1"]:.2f}%',
-            f'light off top 5\n{self.avg_acc["top5_l5"]:.2f}%',
-            f'light off bottom 5\n{self.avg_acc["bot5_l5"]:.2f}%',
-            f'light off AE 5\n{self.avg_acc["ae5_l5"]:.2f}%',
-        ]
+        titles = [f'sampled\n{self.avg_acc["sampled"]:.2f}%',]
+
+        for e in ENVIRONMENTS:
+            titles.append(f'{e} top {N}\n{self.avg_acc[f"top{N}_{e}"]:.2f}%')
+            titles.append(f'{e} bottom {N}\n{self.avg_acc[f"bot{N}_{e}"]:.2f}%')
+            titles.append(f'{e} AE 5\n{self.avg_acc[f"ae5_{e}"]:.2f}%')
+            
         self.draw_multiple_qualitatives(rows, titles, file_name=file_name)
      
     def draw_multiple_qualitatives(self, targets, titles, file_name=None):
@@ -158,20 +155,19 @@ class QualCanvas(Interest):
         return None   
     
     def get_quals(self, path, picked):
-        b1, w1, b5, w5 = picked
-        pc_l1 = self.load_imgs(path,'pc_l1')
-        pc_l5 = self.load_imgs(path,'pc_l5')
-        ae_l1 = self.load_imgs(path,'ae_l1')
-        ae_l5 = self.load_imgs(path,'ae_l5')
         
-        targets = [
-            pc_l1[self.top5_l1[b1:b1+1]],
-            pc_l1[self.bot5_l1[w1:w1+1]],
-            ae_l1[0:1],
-            pc_l5[self.top5_l5[b5:b5+1]],
-            pc_l5[self.bot5_l5[w5:w5+1]],
-            ae_l5[0:1],
-        ]
+        pc, ae = dict(), dict()
+        
+        for e in ENVIRONMENTS:
+            pc[e] = self.load_imgs(path, f'pc_{e}')
+            ae[e] = self.load_imgs(path, f'ae_{e}')
+        
+        targets = []
+        for i, e in enumerate(ENVIRONMENTS):
+            b, w = picked[i]
+            targets.append(pc[e][self.top5s[e][b:b+1]])
+            targets.append(pc[e][self.bot5s[e][w:w+1]])
+            targets.append(ae[e][0:1])
         
         ROOT_DIR = f'{self.dataset_dir}/{self.target_dir}/{self.sample_dir_map[self.target_dir]}'
         ORIGINAL_PATH = f'{ROOT_DIR}/{path}'
@@ -197,14 +193,14 @@ class FeatureCanvas(Interest):
         labels = []
         for data in data_list:
             fs += sum(data.values(),[])
-            labels += sum(map(lambda x: [x]*5, data.keys()), [])
+            labels += sum(map(lambda x: [x]*2, data.keys()), [])
         fs = np.array(fs)
         pred_tsne = TSNE(n_components=2, perplexity=perplexity).fit_transform(fs)
         self.plot_vecs_n_labels(pred_tsne, labels,  ax=ax)
         if title:
             ax.set_title(f'{title}', fontsize=20)
     
-    def draw_multiple_embeddings(self, fv_dict, figsize=(12,4), file_name=None):
+    def draw_multiple_embeddings(self, fv_dict, figsize=(16,4), file_name=None):
         fig, axes = plt.subplots(1,len(fv_dict), figsize=figsize)
         for i, (setting_name, data) in enumerate(fv_dict.items()):
             self.draw_embeddings(data, axes[i], title=LABEL_DICT[setting_name])
@@ -214,16 +210,21 @@ class FeatureCanvas(Interest):
             plt.savefig(file_name)
             
     def plot_activation_dist(self, activations, file_name=None):
-        plt.figure(figsize=(6,2))
+        # plt.figure(figsize=(6,2))
+        subfigs = len(activations.keys())
+        fig, axs = plt.subplots(subfigs, 1, figsize=(6, 2 * subfigs))
+        max_y = 2
         
-        for setting_name, fv_dicts in activations.items():
-            targets = fv_dicts.values()
+        for i, (k, v) in enumerate(activations.items()):
+            targets = v.values()
             fv_num = len(list(targets)[0][0])
-            plt.plot(range(fv_num), np.array(sum(targets,[])).mean(axis=0), label=LABEL_DICT[setting_name], c=COLOR[setting_name])
-
-        plt.xlabel('Feature representation indices', fontsize=10)
+            
+            axs[i].plot(range(fv_num), np.array(sum(targets,[])).mean(axis=0), label=LABEL_DICT[k], c=COLOR[k])
+            axs[i].legend()
+            axs[i].set_ylim(0, max_y)
+            
         plt.ylabel('Activation', fontsize=10)
-        plt.legend()
+        plt.xlabel('Feature representation indices', fontsize=10)
         plt.tight_layout()
         
         if file_name:
