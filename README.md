@@ -1,5 +1,3 @@
-# Lens: Adaptive Camera Sensor for Vision Models
-
 ### 1. Environment Setup
 
 Expected Dataset Structure
