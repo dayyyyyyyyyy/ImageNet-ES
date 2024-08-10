@@ -1,0 +1,9 @@
+date = '240810'  # YYMMDD
+target_dir = f'./datasets/{date}'
+dataset = "TIN-no-resize"
+LOG_FILE_NAME = 'log_file_name.pickle'
+PARAM_TOTAL_NUM = 27  # 27 for parameter control, 5 for auto exposure
+VALID_LENGTH = -1
+OPTION = ''  # '' for parameter control, 'auto' for auto exposure
+delayed = []
+blanks = []

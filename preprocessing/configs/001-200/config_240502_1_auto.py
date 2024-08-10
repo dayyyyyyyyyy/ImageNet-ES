@@ -1,0 +1,9 @@
+date = '240502_1'
+target_dir = f'./datasets/{date}'
+dataset = "TIN-no-resize"
+LOG_FILE_NAME = 'taken_log_env-control_auto-light_control-A4_600dpi_center_tine-no-resize2_session0_0502-115024.pickle'
+PARAM_TOTAL_NUM = 5
+VALID_LENGTH = -1
+OPTION = 'auto'
+delayed = []
+blanks = []

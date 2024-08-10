@@ -1,0 +1,10 @@
+date = '230911'
+OPTION = 'auto'
+target_dir = f'./{date}_{OPTION}'
+dataset = "Restricted_ImageNet"
+session_num = 1
+LOG_FILE_NAME = f"taken_log_night_5x5x5_sample_auto_RI_session{session_num}.pickle"
+PARAM_TOTAL_NUM = 5
+VALID_LENGTH = -1 #if every data is valid (no memory fulled issue)
+delayed = []
+blanks = []
